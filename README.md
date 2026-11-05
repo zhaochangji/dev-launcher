@@ -18,7 +18,7 @@
 
 | 能力 | 说明 |
 |---|---|
-| 📁 从文件夹添加项目 | 逐级浏览目录（📦 标记项目，支持**按名称过滤**当前目录；已收录的折叠展示）→ 扫描（3 层深：monorepo apps/packages、子目录 server/web、uni-app、Go）→ 勾选添加；仓库根与同名子应用会分别标注（如 `open-platform-fe · 仓库根` / `open-platform-fe · apps/open-platform-fe`） |
+| 📁 从文件夹添加项目 | 逐级浏览目录（📦 标记项目，支持**按名称过滤**当前目录；已收录的折叠展示）→ 扫描（3 层深：monorepo apps/packages、子目录 server/web、uni-app、Go）→ **结果按文件夹分组**（每组可整组全选；大组默认折叠）→ 勾选添加 |
 | ⬇ 从 git 克隆添加项目 | 添加弹窗切「从 git 克隆」：填 `git@…`（走本机 SSH key）或 `https://…` 地址 → 选目标父目录 → 克隆（后台执行、进度可看日志）→ 完成自动扫描 → 勾选添加 |
 | 🏷 中文说明自动提取 | package.json description / README 首个中文标题段落 → 卡片说明；取不到显示占位 |
 | 🚀 一键启动/停止 | 缺依赖自动 install（依赖根按「向上最近 lockfile」推断）；启动命令、包管理器（yarn/pnpm/npm）自动识别 |

@@ -397,8 +397,10 @@ function scanFolder(root) {
   const rootPkg = pkgJson(root);
   if (rootPkg) push(nodeCandidate(root, root, rootPkg, path.basename(root)));
   walk(root, 1);
-  // 已收录（内置 + 自定义）的标记出来：不隐藏，交由 UI 折叠展示
+  // 标记所属文件夹（扫描根下第一级目录）+ 是否已收录（不隐藏，交由 UI 折叠展示）
   return out.map(c => {
+    const rel = path.relative(root, c.dir).split(path.sep).join('/');
+    c.scanGroup = rel ? rel.split('/')[0] : '当前文件夹';
     c.already = PROJECTS.some(p => p.dir === c.dir);
     return c;
   });
