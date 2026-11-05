@@ -88,7 +88,7 @@ macOS 会给**下载/zip 解压/微信传输**的文件打「隔离」标记，�
 
 | 方式 | 同事操作 | 门槛 |
 |---|---|---|
-| **① 团队 git 仓库**（推荐） | `git clone` 后**直接双击 .app** —— git 下载不打隔离标记，零摩擦 | 需仓库权限 |
+| **① 团队 git 仓库**（推荐） | `git clone git@github.com:zhaochangji/dev-launcher.git` 后**直接双击 .app** —— git 下载不打隔离标记，零摩擦 | 需仓库权限（私有仓库请先把同事加为 collaborator） |
 | **② zip / 微信** | 解压 → 终端执行一次 `xattr -dr com.apple.quarantine <dev-launcher 目录>` → 双击 .app | 一次性终端命令 |
 | ③ 购买 Apple Developer ID | 签名+公证后任何传输都可直接双击 | 99 美元/年 |
 
