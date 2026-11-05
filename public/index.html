@@ -93,6 +93,9 @@
   .ditem{display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink)}
   .ditem:hover{background:var(--blue-weak)}
   .ditem.proj{color:var(--blue);font-weight:600}
+  #bdirs::-webkit-scrollbar,#bscan::-webkit-scrollbar{width:9px}
+  #bdirs::-webkit-scrollbar-thumb,#bscan::-webkit-scrollbar-thumb{background:#c9ccd2;border-radius:5px;border:2px solid #fff}
+  #bdirs::-webkit-scrollbar-track,#bscan::-webkit-scrollbar-track{background:transparent}
   .sitem{display:block;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:7px 0;cursor:pointer}
   .sitem:hover{border-color:var(--blue)}
   .sitem.on{border-color:var(--blue);background:var(--blue-weak)}
@@ -181,7 +184,11 @@
         <button class="mini" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="scanHere()">🔍 扫描此文件夹</button>
       </div>
       <div id="bcrumb" style="padding:0 16px 4px;font-size:11.5px;color:var(--sub);font-family:var(--mono)"></div>
-      <div id="bdirs" style="max-height:190px;overflow:auto;padding:2px 16px 10px"></div>
+      <div style="padding:0 16px 6px;display:flex;gap:8px;align-items:center">
+        <input id="bfilter" oninput="renderDirs()" placeholder="🔎 在当前目录里过滤文件夹名…" style="flex:1;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink)">
+        <span class="hint" id="bcount" style="white-space:nowrap;margin:0"></span>
+      </div>
+      <div id="bdirs" style="max-height:240px;overflow:auto;padding:2px 16px 10px"></div>
     </div>
     <div id="gitbox" style="display:none;padding:12px 16px 6px">
       <input id="giturl" style="width:100%;font-family:var(--mono);font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink)" placeholder="git 仓库地址：git@github.com:owner/repo.git 或 https://github.com/owner/repo.git">
@@ -453,8 +460,16 @@ async function pollClones(){
 }
 
 // ---------------- 文件夹浏览与扫描添加 ----------------
-let bCur='', bCandidates=[], bExisting=[], scanSel=new Set();
+let bCur='', bCandidates=[], bExisting=[], scanSel=new Set(), bDirs=[];
 function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+function renderDirs(){
+  const q=($('#bfilter')?.value||'').trim().toLowerCase();
+  const list=(bDirs||[]).filter(x=>!q||x.name.toLowerCase().includes(q));
+  $('#bcount').textContent=`共 ${bDirs.length} 个${q?`，匹配 ${list.length} 个`:''}`;
+  $('#bdirs').innerHTML=list.map(x=>
+    `<div class="ditem ${x.isProject?'proj':''}" onclick="loadBrowse('${esc(x.path)}')">${x.isProject?'📦':'📁'} ${x.name}${x.isProject?' · 项目':''}</div>`
+  ).join('')||`<div class="hint" style="padding:6px 0">${bDirs.length?'没有匹配的文件夹':'（此目录下没有子文件夹）'}</div>`;
+}
 async function openBrowse(){$('#browsemodal').classList.add('show');await loadBrowse(bCur)}
 function closeBrowse(){$('#browsemodal').classList.remove('show');clearInterval(cloneWatch);cloneWatch=null}
 async function loadBrowse(dir){
@@ -465,9 +480,9 @@ async function loadBrowse(dir){
   $('#bscan').innerHTML='';$('#bscan-hint').textContent='点击下方文件夹进入，或直接「扫描此文件夹」';
   $('#bcrumb').textContent='当前位置：'+bCur+(d.parent?('  ｜  上级：'+d.parent):'');
   window._bparent=d.parent;
-  $('#bdirs').innerHTML=(d.dirs||[]).map(x=>
-    `<div class="ditem ${x.isProject?'proj':''}" onclick="loadBrowse('${esc(x.path)}')">${x.isProject?'📦':'📁'} ${x.name}${x.isProject?' · 项目':''}</div>`
-  ).join('')||'<div class="hint" style="padding:6px 0">（此目录下没有子文件夹）</div>';
+  bDirs=d.dirs||[];
+  if($('#bfilter')) $('#bfilter').value='';
+  renderDirs();
 }
 function goPath(){loadBrowse($('#bpath').value.trim())}
 function upPath(){if(window._bparent)loadBrowse(window._bparent)}

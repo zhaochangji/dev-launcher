@@ -350,11 +350,14 @@ function nodeCandidate(dir, root, pkg, label) {
   const installCwd = hasOwnLock ? dir : installRootFor(dir);
   const pm = hasOwnLock || installCwd !== dir ? pmForDir(installCwd) : pmForDir(dir);
   const rootName = path.basename(root);
-  const pkgName = pkg.name && pkg.name !== 'workspace' ? pkg.name.split('/').pop() : label;
+  const baseName = pkg.name && pkg.name !== 'workspace' ? pkg.name.split('/').pop() : label;
+  // 包名与目录名相同（常见于仓库根）时标成「仓库根」，避免与同名子应用混淆
+  const label2 = dir === root ? '仓库根' : (baseName === label ? '仓库根' : label);
+  const pkgName = baseName;
   return {
     id: 'u-' + slug(rootName + '-' + label),
     group: '📁 ' + rootName + '（文件夹添加）',
-    name: pkgName + ' · ' + label,
+    name: pkgName + ' · ' + label2,
     desc: zh ? (zh + ' ｜ ' + pm + ' run ' + key) : `扫描发现：${pm} run ${key}（来自 package.json，未找到中文说明）`,
     dir,
     install: { cwd: installCwd, cmd: pm, args: ['install'], marker: path.join(installCwd, 'node_modules') },
