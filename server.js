@@ -159,6 +159,7 @@ function stopProject(id) {
   });
   const port = resolvePort(proj);
   if (port) exec(`lsof -tiTCP:${port} -sTCP:LISTEN 2>/dev/null | xargs kill 2>/dev/null`);
+  if (proj.led) exec('pkill -f "led start" 2>/dev/null');
   STATE.procs[id] = [];
   saveState();
   setTimeout(() => { const p = resolvePort(proj); if (p) portPids; }, 0);
@@ -177,7 +178,9 @@ function startProject(id, done) {
   const alive = (STATE.procs[id] || []).some(r => pidAlive(r.pid));
   if (alive) return done(null, { already: true });
 
-  const steps = proj.start || [];
+  const ledHost = proj.led ? ledHostFor(proj.dir) : null;
+  const steps = (proj.start || []).filter(s => s.cmd !== 'led'); // led 由卡片开关控制
+  if (proj.led && ledHost) steps.push({ cmd: 'led', args: ['start'], delayMs: 4000, pkill: 'led start', log: 'led' });
   const runSteps = (i) => {
     if (i >= steps.length) return afterStart(null, done);
     const step = steps[i];
@@ -189,6 +192,7 @@ function startProject(id, done) {
   const afterStart = (err, done) => {
     // 启动后自动应用关联的 w2 场景
     const msg = { started: !err };
+    if (proj.led && !ledHost) msg.ledSkipped = true; // 未配置 led 时不盲起（会交互卡住）
     if (!err && CFG.autoApplyScenario && proj.scenario) {
       applyScenario(proj.scenario, (sErr, sOut) => {
         done(null, Object.assign(msg, { scenario: proj.scenario, scenarioOk: !sErr }));
@@ -439,12 +443,37 @@ function probeUrl(u, cb) {
 }
 
 
+// ---------------------------------------------------------------- led 隧道地址（从 led list 读取）
+const ledCache = { t: 0, rows: [] };
+function normDir(p) { return String(p || '').replace(/\\/g, '/').replace(/\/+$/, ''); }
+function ledRows() {
+  if (Date.now() - ledCache.t < 10000) return ledCache.rows;
+  const out = sh('led list 2>/dev/null', { timeout: 8000 }) || '';
+  const rows = [];
+  for (const line of out.split('\n')) {
+    if (!line.includes('│')) continue;
+    const cells = line.split('│').map(s => s.trim().replace(/^║\s*/, '').replace(/\s*║$/, '')).filter(Boolean);
+    if (cells.length >= 4 && cells[1].includes('.led.staging.kuaishou.com') && cells[3].startsWith('/')) {
+      rows.push({ appKey: cells[0], host: cells[1], port: cells[2], dir: cells[3] });
+    }
+  }
+  ledCache.t = Date.now(); ledCache.rows = rows;
+  return rows;
+}
+function ledHostFor(dir) {
+  const nd = normDir(dir);
+  const row = ledRows().find(r => {
+    const rd = normDir(r.dir);
+    return rd === nd || nd.endsWith(rd) || rd.endsWith(nd);
+  });
+  return row ? row.host : null;
+}
+
 function projectStatus(proj) {
   const recs = STATE.procs[proj.id] || [];
   const ours = recs.filter(r => pidAlive(r.pid));
   const port = proj.port || preferredPort(proj) || sniffPort(proj.id, null);
-  if (port && !proj.port) rememberPortFor(proj.id, port);
-  const listeners = port ? portPids(port) : [];
+  if (port && !proj.port) rememberPortFor(proj.id, port);  const listeners = port ? portPids(port) : [];
   let status;
   if (ours.length > 0) status = 'running';
   else if (listeners.length > 0) status = 'external';
@@ -455,7 +484,11 @@ function projectStatus(proj) {
   // 访问地址：显式配置的 url（staging 域名）随时可用；localhost 类地址仅运行/启动中提供
   //（停止态只显示「曾用 :端口」徽标，不给可点链接——避免端口被其他项目占用时误导）
   const live = status === 'running' || status === 'starting' || status === 'external';
-  const url = proj.url || (live && port ? (proj.localUrl || `http://localhost:${port}`) : null);
+  let url = proj.url || (live && port ? (proj.localUrl || `http://localhost:${port}`) : null);
+  if (proj.led) {
+    const host = ledHostFor(proj.dir);
+    if (host) url = 'https://' + host;
+  }
   // 探活（异步缓存，读现值；无缓存则后台发起，下一轮轮询可见）
   let urlOk = null;
   if (url && status === 'running') {
@@ -466,7 +499,7 @@ function projectStatus(proj) {
   return {
     id: proj.id, group: proj.group, name: proj.name, desc: proj.desc, note: proj.note || '',
     status, pid: ours.map(r => r.pid), port, url, urlOk,
-    scenario: proj.scenario, installNeed, installing,
+    scenario: proj.scenario, led: !!proj.led, installNeed, installing,
     custom: !proj.builtin,
   };
 }
@@ -637,6 +670,19 @@ const server = http.createServer((req, res) => {
       ageSec: Math.round((Date.now() - c.startedAt) / 1000),
     })).filter(c => c.running || (Date.now() - ((STATE.cloning[c.id] || {}).finishedAt || 0)) < 600000);
     sendJSON(res, 200, { ok: true, clones: list });
+    return;
+  }
+
+  if (req.method === 'POST' && p === '/api/project/config') {
+    readBody(req, body => {
+      const list = loadLocal();
+      const proj = list.find(x => x.id === body.id);
+      if (!proj) { sendJSON(res, 404, { error: '项目不存在' }); return; }
+      if (Object.prototype.hasOwnProperty.call(body, 'scenario')) proj.scenario = body.scenario || null;
+      if (Object.prototype.hasOwnProperty.call(body, 'led')) proj.led = !!body.led;
+      saveLocal(list); reloadProjects();
+      sendJSON(res, 200, { ok: true, scenario: proj.scenario, led: !!proj.led });
+    });
     return;
   }
 

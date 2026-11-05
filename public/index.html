@@ -51,6 +51,10 @@
   .note{font-size:11.5px;color:var(--sub);background:#fafbfc;border:1px dashed var(--line);border-radius:8px;padding:6px 9px}
   .ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto;padding-top:6px}
   .ops button{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  .cfgrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:11.5px;color:var(--sub)}
+  .cfgrow select{font-size:11.5px;padding:3px 6px;border:1px solid var(--line);border-radius:7px;background:#fff;color:var(--ink);max-width:100%}
+  .cfgrow label{display:inline-flex;gap:4px;align-items:center;cursor:pointer;user-select:none}
+  .cfgrow label input{cursor:pointer}
   button{font-size:13px;border-radius:8px;padding:6px 14px;cursor:pointer;border:1px solid transparent}
   .b-pri{background:var(--blue);color:#fff} .b-pri:hover{filter:brightness(1.08)}
   .b-danger{background:var(--red);color:#fff}
@@ -269,6 +273,7 @@ function card(p){
   if(p.url) badges+=`<span class="badge" title="${p.url}" style="max-width:100%">${p.url}</span>`;
   if(scenario) badges+=`<span class="badge g">w2 场景：${scenario.name.split('（')[0]}</span>`;
   if(scenario) badges+=`<span class="badge a">经 w2 代理 127.0.0.1:8899</span>`;
+  if(p.led) badges+=`<span class="badge a">led 隧道</span>`;
   const running=p.status!=='stopped';
   const url=p.url||(p.port?`http://localhost:${p.port}`:null);
   return `<div class="card" data-id="${p.id}">
@@ -276,6 +281,16 @@ function card(p){
     <div class="desc">${p.desc}</div>
     ${badges?`<div class="badges">${badges}</div>`:''}
     ${p.note?`<div class="note">${p.note}</div>`:''}
+    <div class="cfgrow">
+      <span>w2 场景</span>
+      <select onchange="setCfg('${p.id}','scenario',this.value)" title="启动该项目时自动切换到此 w2 场景（全局互斥，一次一套）">
+        <option value="">不绑定</option>
+        ${(STATE.scenarios||[]).map(s=>`<option value="${s.id}" ${p.scenario===s.id?'selected':''}>${s.name.split('（')[0]}</option>`).join('')}
+      </select>
+      <label title="启动时同时拉起 led 隧道（需要本机已有该项目的 led 配置；首次可能需 led login）">
+        <input type="checkbox" ${p.led?'checked':''} onchange="setCfg('${p.id}','led',this.checked)"> led 隧道
+      </label>
+    </div>
     <div class="ops">
       ${p.installNeed?`<button class="b-warn" onclick="act('install','${p.id}')">📦 先装依赖</button>`:''}
       ${running
@@ -365,7 +380,8 @@ async function act(kind,id){
       const target=[...document.querySelectorAll('.card')].find(c=>c.dataset.id===id);
       const noUrl=target&&!target.querySelector('[onclick^="window.open"]');
       const sc=d.scenario?(d.scenarioOk?' ｜ 已自动切换 w2 场景：'+d.scenario:' ｜ w2 场景切换失败，见场景区'):'';
-      toast('🚀 启动命令已发出'+(noUrl?'——地址识别中：跑起来后「🔗 访问」按钮自动点亮（老项目编译可能 1-3 分钟）':'，看状态灯与日志确认就绪')+sc,4800);
+      const led=d.ledSkipped?' ｜ ⚠ 该项目暂无 led 配置，已跳过 led 隧道（先配好 led 再用）':'';
+      toast('🚀 启动命令已发出'+(noUrl?'——地址识别中：跑起来后「🔗 访问」按钮自动点亮（老项目编译可能 1-3 分钟）':'，看状态灯与日志确认就绪')+sc+led,5200);
     }
     else if(kind==='stop')toast('已发送停止信号',2000);
     else if(kind==='install')toast('依赖安装已在后台执行，进度看日志',3000);
@@ -524,6 +540,14 @@ async function adopt(){
   toast(r.added?('✅ 已添加 '+r.added+' 个项目，可在面板分组「📁 …（文件夹添加）」中一键启动'):'没有新增（可能已存在）',3600);
   closeBrowse();refreshState();
 }
+async function setCfg(id,key,val){
+  const d=await api('/api/project/config',{id,[key]:val});
+  if(d.error){toast('❌ '+d.error,3600);return}
+  if(key==='scenario') toast(val?('已绑定 w2 场景：'+val+'（启动时自动应用）'):'已解除 w2 场景绑定',2600);
+  else toast(val?'已开启 led 隧道（启动时同时拉起 led start）':'已关闭 led 隧道',2600);
+  refreshState();
+}
+
 async function removeProj(id,builtin){
   const msg=builtin==='1'||builtin===1?'从启动器移除「'+id+'」？（运行中会先停止；内置项目移除后可在下方恢复）'
                                  :'从启动器移除「'+id+'」？（运行中会先停止；自定义项目移除后需重新扫描添加）';
