@@ -38,6 +38,7 @@ dev-launcher/（这份代码，可拷贝/放 git 共享）
 ├── 分发说明.md            # 给接收方的打开说明
 ├── server.js              # 面板服务（纯 Node 标准库，零依赖，仅监听 127.0.0.1）
 ├── projects.json          # 「团队共享」内容：w2 代理场景包（whistleGroup + scenarios）
+├── project-templates.json # 「团队共享」内容：项目启动模板（场景/组合启动/端口，按目录后缀自动匹配）
 └── public/index.html      # 单文件 UI
 
 ~/.dev-launcher/（每人自己的，代码里读不到别人的）
@@ -69,6 +70,17 @@ dev-launcher/（这份代码，可拷贝/放 git 共享）
 ```
 
 字段：`start[]` 支持多进程（cwd/env/delayMs/pkill 每步独立）；`port` 未知填 null（日志嗅探）；`scenario` 关联 w2 场景 id（启动自动应用）；`builtin:true` 的卡片移除后可恢复。
+
+## 团队共享：启动模板（关键）
+
+内置的 15 个启动配置（含 **w2 场景关联、乾坤组合启动、led 隧道、openssl/node 版本兼容**）保存在 **`project-templates.json`**，随仓库共享。**扫描/添加项目时按目录后缀自动匹配并套用**——所以同事自己扫出来的 `open-platform-fe`、`interactive` 等项目，也会自动带上 `scenario`，访问 staging 域名时走本地，而不是线上。
+
+- 匹配规则：项目目录以模板 `match` 中的后缀结尾，**最长后缀优先**
+- 路径占位符：`{dir}` 项目目录、`{repoRoot}` 最近 `.git` 祖先、`{repoParent}` 仓库父目录、`{user}` 当前用户名、`{nvm:x.y.z}` 对应 nvm 版本的 bin、`{PATH}` 系统 PATH
+- 扫描结果会标「含团队预设」；已导入的裸项目在面板启动时会自动补齐模板（自动备份 `projects.local.json.pre-template-<时间>`）
+- 新增/调整团队模板：编辑 `project-templates.json` 后提交，同事 `git pull` 即可
+
+> 注意：模板只按**目录结构**匹配，不依赖任何人的绝对路径，因此在任何人的机器上都能用。
 
 ## 团队共享：场景包
 

@@ -269,6 +269,7 @@ function card(p){
   if(p.url) badges+=`<span class="badge" title="${p.url}" style="max-width:100%">${p.url}</span>`;
   if(scenario) badges+=`<span class="badge g">w2 场景：${scenario.name.split('（')[0]}</span>`;
   if(scenario) badges+=`<span class="badge a">经 w2 代理 127.0.0.1:8899</span>`;
+  if(p.templated) badges+=`<span class="badge g">✓ 团队模板</span>`;
   const running=p.status!=='stopped';
   const url=p.url||(p.port?`http://localhost:${p.port}`:null);
   return `<div class="card" data-id="${p.id}">
@@ -502,7 +503,7 @@ async function scanHere(){
     (bCandidates.map(c=>
       `<label class="sitem" id="si-${c.id}">
         <input type="checkbox" onchange="toggleSel('${esc(c.dir)}',this)" style="margin-right:8px">
-        <span class="t">${c.name}</span>
+        <span class="t">${c.name}${c.templated?' <span class="badge g" style="font-weight:400">含团队预设</span>':''}</span>
         <span class="d">${c.dir}<br>${c.desc}</span>
       </label>`).join('')||'<div class="hint" style="padding:4px 0">（没有新项目可添加）</div>')
     +(bExisting.length?`

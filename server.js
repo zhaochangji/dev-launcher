@@ -13,6 +13,7 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const net = require('net');
 const { spawn, execSync, exec } = require('child_process');
 
@@ -34,6 +35,10 @@ fs.mkdirSync(SCEN_DIR, { recursive: true });
 const CFG = JSON.parse(fs.readFileSync(path.join(ROOT, 'projects.json'), 'utf8'));
 const SCENARIOS = CFG.scenarios || [];
 const GROUP_NAME = CFG.whistleGroup || W2_GROUP;
+
+// ---- 团队启动模板（仓库内共享，路径用占位符，扫描/添加时自动套用）----
+const TEMPLATES = (readJsonFile(path.join(ROOT, 'project-templates.json'), { templates: [] }).templates) || [];
+function readJsonFile(f, d) { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return d; } }
 
 // ---- 用户项目列表：~/.dev-launcher/projects.local.json（每人一份，与代码分离）----
 const LOCAL_FILE = path.join(DATA_DIR, 'projects.local.json');
@@ -366,6 +371,93 @@ function nodeCandidate(dir, root, pkg, label) {
     note: '从文件夹扫描添加；端口未识别时启动后自动嗅探；已自动带 openssl-legacy 兼容（webpack4 老项目需要，vite 不受影响）',
   };
 }
+
+// ---------------------------------------------------------------- 团队模板匹配
+function normDir(p) { return String(p || '').replace(/\\/g, '/').replace(/\/+$/, ''); }
+function detectRepoRoot(dir) {
+  let d = normDir(dir);
+  for (let i = 0; i < 6; i++) {
+    if (fs.existsSync(path.join(d, '.git'))) return d;
+    const parent = path.posix.dirname(d);
+    if (parent === d) break;
+    d = parent;
+  }
+  const idx = normDir(dir).lastIndexOf('/apps/');
+  if (idx > 0) return normDir(dir).slice(0, idx);
+  return normDir(dir);
+}
+function resolveTplValue(v, ctx) {
+  if (typeof v !== 'string') return v;
+  return v
+    .replace(/\{dir\}/g, ctx.dir)
+    .replace(/\{repoRoot\}/g, ctx.repoRoot)
+    .replace(/\{repoParent\}/g, ctx.repoParent)
+    .replace(/\{user\}/g, ctx.user)
+    .replace(/\{PATH\}/g, process.env.PATH || '')
+    .replace(/\{nvm:([^}]+)\}/g, (m, ver) => {
+      const p = path.join(process.env.HOME || '', '.nvm', 'versions', 'node', 'v' + ver, 'bin');
+      return fs.existsSync(p) ? p : '';
+    });
+}
+function matchTemplate(dir) {
+  const nd = normDir(dir);
+  let best = null, bestLen = 0;
+  for (const t of TEMPLATES) {
+    for (const m of (t.match || [])) {
+      const mm = '/' + normDir(m).replace(/^\/+/, '');
+      if (nd.endsWith(mm) && mm.length > bestLen) { best = t; bestLen = mm.length; }
+    }
+  }
+  return best;
+}
+function templateCtx(dir) {
+  const repoRoot = detectRepoRoot(dir);
+  return { dir: normDir(dir), repoRoot, repoParent: path.posix.dirname(repoRoot), user: os.userInfo().username };
+}
+// 把团队模板套到扫描候选/项目条目上（scenario、端口、访问地址、组合启动步骤、备注）
+function applyTemplateToCandidate(c) {
+  if (!c || !c.dir) return c;
+  const t = matchTemplate(c.dir);
+  if (!t) return c;
+  const ctx = templateCtx(c.dir);
+  c.templated = true;
+  if (Object.prototype.hasOwnProperty.call(t, 'scenario')) c.scenario = t.scenario;
+  if (Object.prototype.hasOwnProperty.call(t, 'port')) c.port = t.port;
+  if (Object.prototype.hasOwnProperty.call(t, 'url')) c.url = t.url ? resolveTplValue(t.url, ctx) : null;
+  if (Object.prototype.hasOwnProperty.call(t, 'localUrl')) c.localUrl = t.localUrl ? resolveTplValue(t.localUrl, ctx) : null;
+  if (t.name) c.name = t.name;
+  if (t.note) c.note = t.note;
+  if (Array.isArray(t.start)) {
+    c.start = t.start.map(s => {
+      const step = Object.assign({}, s);
+      if (step.cwd) step.cwd = resolveTplValue(step.cwd, ctx);
+      if (step.env) step.env = Object.fromEntries(Object.entries(step.env).map(([k, v]) => [k, resolveTplValue(v, ctx)]));
+      return step;
+    });
+  }
+  return c;
+}
+// 启动时升级「裸项目」（扫描导入但无场景/访问地址），套用团队模板；有备份，可回滚
+function upgradeLocalWithTemplates() {
+  const list = loadLocal();
+  const ts = new Date().toISOString().replace(/[:.]/g, '-');
+  let changed = 0;
+  for (const p of list) {
+    if (!p || p.templated) continue;
+    const t = matchTemplate(p.dir || '');
+    if (!t) continue;
+    if (p.scenario != null || p.url != null) continue;
+    const before = JSON.stringify(p);
+    applyTemplateToCandidate(p);
+    if (JSON.stringify(p) !== before) changed++;
+  }
+  if (changed) {
+    try { fs.copyFileSync(LOCAL_FILE, LOCAL_FILE + '.pre-template-' + ts); } catch { }
+    saveLocal(list); reloadProjects();
+    console.log(`[dev-launcher] 已为 ${changed} 个项目套用团队模板（备份 ${LOCAL_FILE}.pre-template-${ts}）`);
+  }
+}
+
 // 扫描一个文件夹：受限递归（3 层深，node_modules/dist/.git 已滤），Node & Go
 function scanFolder(root) {
   const out = [];
@@ -393,8 +485,9 @@ function scanFolder(root) {
   const rootPkg = pkgJson(root);
   if (rootPkg) push(nodeCandidate(root, root, rootPkg, path.basename(root)));
   walk(root, 1);
-  // 已收录（内置 + 自定义）的标记出来：不隐藏，交由 UI 折叠展示
+  // 套用团队模板 → 标记已收录（不隐藏，交由 UI 折叠展示）
   return out.map(c => {
+    applyTemplateToCandidate(c);
     c.already = PROJECTS.some(p => p.dir === c.dir);
     return c;
   });
@@ -468,6 +561,7 @@ function projectStatus(proj) {
     status, pid: ours.map(r => r.pid), port, url, urlOk,
     scenario: proj.scenario, installNeed, installing,
     custom: !proj.builtin,
+    templated: !!proj.templated,
   };
 }
 
@@ -592,6 +686,7 @@ const server = http.createServer((req, res) => {
       for (const c of list) {
         if (cur.some(x => x.dir === c.dir)) continue;
         delete c.already; // 扫描期的临时标记不入库
+        applyTemplateToCandidate(c); // 入库前再套一次团队模板（防止外部手工提交裸配置）
         cur.push(c); added++;
       }
       saveLocal(cur); reloadProjects();
@@ -713,6 +808,7 @@ server.on('error', err => {
 
 server.listen(PORT, '127.0.0.1', () => {
   try { fs.writeFileSync(PORT_FILE, String(PORT)); } catch { }
+  try { upgradeLocalWithTemplates(); } catch (e) { console.error('[dev-launcher] 模板升级失败:', e.message); }
   enrichCustomDescs(); // 启动时升级存量卡片的中文说明
   console.log(`[dev-launcher] http://127.0.0.1:${PORT}  （Ctrl+C 退出面板服务；已启动的项目不受影响）`);
 });
