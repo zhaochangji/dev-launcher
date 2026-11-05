@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本地项目启动器</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#fff; --ink:#1f2430; --sub:#71767f; --line:#e4e6eb;
+    --blue:#3b6df5; --blue-weak:#eaf0ff; --green:#1a9e55; --green-weak:#e6f7ee;
+    --red:#d43c3c; --red-weak:#fdeaea; --amber:#c07f00; --amber-weak:#fdf3e0;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"PingFang SC","Segoe UI",sans-serif;color:var(--ink);background:var(--bg);font-size:14px;line-height:1.6}
+  .wrap{max-width:1180px;margin:0 auto;padding:26px 20px 80px}
+  header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:18px}
+  h1{font-size:20px;font-weight:700}
+  h1 small{font-weight:400;color:var(--sub);font-size:12px;margin-left:8px}
+  .toplinks{display:flex;gap:8px;flex-wrap:wrap}
+  .toplinks a{font-size:12px;color:var(--blue);text-decoration:none;border:1px solid var(--line);background:var(--card);padding:4px 10px;border-radius:8px}
+  .toplinks a:hover{border-color:var(--blue)}
+
+  .envbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin-bottom:20px}
+  .env{font-size:12px;color:var(--sub);display:flex;gap:6px;align-items:center;padding:2px 6px}
+  b.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:#bbb}
+  .dot.on{background:var(--green)} .dot.off{background:#ccc} .dot.warn{background:var(--red)}
+  .mini{font-size:12px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:7px;padding:3px 9px;cursor:pointer}
+  .mini:hover{border-color:var(--blue);color:var(--blue)}
+
+  h2{font-size:15px;margin:22px 0 10px;display:flex;align-items:center;gap:8px}
+  h2::before{content:"";width:4px;height:16px;background:var(--blue);border-radius:2px;display:inline-block}
+  .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 14px}
+  .tab{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 14px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;color:var(--ink)}
+  .tab:hover{border-color:var(--blue)}
+  .tab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .tab .tot{font-size:11px;font-family:var(--mono);color:var(--sub)}
+  .tab.on .tot{color:rgba(255,255,255,.75)}
+  .tab .cnt{font-size:11px;font-family:var(--mono);background:var(--green);color:#fff;border-radius:999px;padding:0 7px;line-height:17px;min-width:17px;text-align:center;display:none}
+  .tab .cnt.show{display:inline-block}
+  .tab.on .cnt{background:rgba(255,255,255,.3)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;transition:box-shadow .15s}
+  .card:hover{box-shadow:0 3px 14px rgba(20,30,60,.07)}
+  .card .row1{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .card .name{font-weight:650;font-size:14.5px}
+  .card .desc{color:var(--sub);font-size:12.5px}
+  .badges{display:flex;flex-wrap:wrap;gap:6px}
+  .badge{font-size:11px;font-family:var(--mono);background:var(--blue-weak);color:var(--blue);padding:2px 8px;border-radius:6px}
+  .badge.g{background:var(--green-weak);color:var(--green)} .badge.a{background:var(--amber-weak);color:var(--amber)} .badge.r{background:var(--red-weak);color:var(--red)}
+  .note{font-size:11.5px;color:var(--sub);background:#fafbfc;border:1px dashed var(--line);border-radius:8px;padding:6px 9px}
+  .ops{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto;padding-top:6px}
+  .ops button{white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+  button{font-size:13px;border-radius:8px;padding:6px 14px;cursor:pointer;border:1px solid transparent}
+  .b-pri{background:var(--blue);color:#fff} .b-pri:hover{filter:brightness(1.08)}
+  .b-danger{background:var(--red);color:#fff}
+  .b-ghost{background:#fff;border-color:var(--line);color:var(--ink)} .b-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .b-warn{background:var(--amber);color:#fff}
+  button:disabled{opacity:.45;cursor:not-allowed}
+
+  .st{display:inline-flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap}
+  .st .big{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .st.run .big{background:var(--green);box-shadow:0 0 0 3px var(--green-weak)} .st.run{color:var(--green)}
+  .st.ext .big{background:var(--blue)} .st.ext{color:var(--blue)}
+  .st.stop .big{background:#c9ccd2} .st.stop{color:var(--sub)}
+  .st.busy .big{background:var(--amber);animation:pulse 1s infinite} .st.busy{color:var(--amber)}
+  @keyframes pulse{50%{opacity:.35}}
+
+  .sc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+  .sc{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;position:relative}
+  .sc:hover{border-color:var(--blue)}
+  .sc.cur{border-color:var(--green);background:var(--green-weak)}
+  .sc.sel{border-color:var(--blue);background:var(--blue-weak)}
+  .sc .t{font-weight:650;font-size:13.5px}
+  .sc .d{font-size:11.5px;color:var(--sub);font-family:var(--mono);margin-top:2px}
+  .sc .tag{position:absolute;top:10px;right:12px;font-size:11px;color:var(--green);display:none}
+  .sc.cur .tag{display:inline}
+
+  details.guide{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin-top:24px}
+  details.guide summary{cursor:pointer;font-weight:650;font-size:13.5px;color:var(--amber)}
+  details.guide ol{margin:10px 0 4px 20px;font-size:12.5px;color:var(--ink)}
+  details.guide li{margin:6px 0}
+  details.guide code{font-family:var(--mono);background:#f2f3f5;padding:1px 5px;border-radius:5px;font-size:11.5px}
+
+  .modal{position:fixed;inset:0;background:rgba(15,20,35,.45);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.show{display:flex}
+  .mbox{background:#10131a;color:#dfe3ea;border-radius:14px;width:min(920px,96vw);height:min(640px,86vh);display:flex;flex-direction:column;overflow:hidden}
+  .mbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#171b24;font-family:var(--mono);font-size:12.5px;color:#9aa3b2}
+  .mbar .x{cursor:pointer;color:#9aa3b2;font-size:16px;background:none;border:none}
+  .mbox pre{flex:1;overflow:auto;padding:14px 18px;font-family:var(--mono);font-size:12px;line-height:1.55;white-space:pre-wrap;word-break:break-all}
+  .mbox.light{background:#fff;color:var(--ink)}
+  .mbox.light .mbar{background:#f5f6f8;color:var(--sub)}
+  .ditem{display:flex;gap:8px;align-items:center;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--ink)}
+  .ditem:hover{background:var(--blue-weak)}
+  .ditem.proj{color:var(--blue);font-weight:600}
+  .sitem{display:block;border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:7px 0;cursor:pointer}
+  .sitem:hover{border-color:var(--blue)}
+  .sitem.on{border-color:var(--blue);background:var(--blue-weak)}
+  .sitem .t{font-weight:600;font-size:13px}
+  .sitem .d{font-size:11.5px;color:var(--sub);font-family:var(--mono);margin-top:2px}
+  details.fold{margin-top:10px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:#fafbfc}
+  details.fold summary{cursor:pointer;font-size:12.5px;color:var(--sub);font-weight:600;user-select:none}
+  details.fold summary:hover{color:var(--green)}
+  .exitem{display:flex;justify-content:space-between;gap:10px;align-items:baseline;padding:5px 2px;font-size:12.5px;color:var(--green)}
+  .exitem .d{font-size:11px;color:var(--sub);font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:55%}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:#222835;color:#fff;font-size:13px;padding:10px 20px;border-radius:10px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:80vw;z-index:99}
+  .toast.show{opacity:.96}
+  .hint{font-size:12px;color:var(--sub);margin:8px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>本地项目启动器 <small>dev-launcher · 双击「启动项目面板.command」随时唤起</small></h1>
+    <div class="toplinks">
+      <button class="b-pri" style="padding:5px 14px;font-size:12.5px" onclick="openBrowse()">➕ 选择文件夹添加项目</button>
+      <span id="corplinks" style="display:none">
+        <a href="http://127.0.0.1:8899/" target="_blank">w2 代理面板</a>
+        <a href="https://led.corp.kuaishou.com" target="_blank">led 平台</a>
+        <a href="https://passport-portal.staging.kuaishou.com/#/apply/sidWhitelist" target="_blank">passport 白名单</a>
+      </span>
+    </div>
+  </header>
+
+  <div class="envbar" id="envbar">环境检查中…</div>
+
+  <h2>项目</h2>
+  <div class="tabs" id="tabs"></div>
+  <div id="groups"></div>
+  <div id="removed" style="margin-top:4px"></div>
+
+  <div class="sc-wrap">
+    <h2>w2 代理场景 <span class="hint" style="margin:0 0 0 6px">—— 同名规则集覆盖，一次只能启用一套，切换即互斥</span></h2>
+    <div class="sc-grid" id="scenarios"></div>
+    <div class="ops" style="margin-top:10px">
+      <button class="b-pri" id="sc-apply">应用选中场景（w2 add --force）</button>
+      <span class="hint" id="sc-last" style="align-self:center"></span>
+    </div>
+  </div>
+
+  <details class="guide" id="corpguide" style="display:none">
+    <summary>⚠️ 一次性配置引导（首次使用请先做这几步，做一次管很久）</summary>
+    <ol>
+      <li><b>浏览器代理</b>：安装 Zero Omega 插件 → 新建情景模式 → 代理服务器 HTTP/HTTPS 都填 <code>127.0.0.1:8899</code> → 切换到该模式。</li>
+      <li><b>信任 w2 根证书</b>（w2 运行时）：打开 <code>http://127.0.0.1:8899/</code> 下载根证书 → 双击导入「系统」钥匙串 → 右键显示简介 → 信任设为「始终信任」→ <code>w2 restart</code>。</li>
+      <li><b>led 隧道登录</b>（仅短剧项目需要）：终端 <code>led login</code> 浏览器完成 SSO。</li>
+      <li><b>passport 白名单</b>（仅短剧项目需要）：上面的 passport 链接申请 3 项（回调 / refer 域名 / sid，sid 填 <code>kuaishou.kp.content</code>），都填 led 域名。</li>
+      <li><b>访问纪律</b>：staging 项目一律走 staging 域名（卡片上的「访问」按钮），不要用自动弹出的 localhost 页面登录（会被判 production）。</li>
+    </ol>
+  </details>
+</div>
+
+<div class="modal" id="logmodal">
+  <div class="mbox">
+    <div class="mbar">
+      <span id="logtitle">logs</span>
+      <span>
+        <button class="mini" id="log-auto">⏸ 暂停滚动</button>
+        <button class="mini" onclick="fetch('/api/logs?id='+curLogId).then(r=>r.json()).then(d=>{document.getElementById('logview').textContent=d.text})">↻ 刷新</button>
+        <button class="x" onclick="closeLog()">✕</button>
+      </span>
+    </div>
+    <pre id="logview"></pre>
+  </div>
+</div>
+<div class="modal" id="browsemodal">
+  <div class="mbox light">
+    <div class="mbar">
+      <span>📁 添加项目：本地文件夹 / 从 git 克隆 → 扫描 → 勾选 → 添加</span>
+      <button class="x" onclick="closeBrowse()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;padding:10px 16px 0">
+      <button class="mini" id="tab-local" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="bmode('local')">本地文件夹</button>
+      <button class="mini" id="tab-git" onclick="bmode('git')">⬇ 从 git 克隆</button>
+    </div>
+    <div id="localbox">
+      <div style="display:flex;gap:8px;padding:12px 16px 6px;align-items:center">
+        <input id="bpath" style="flex:1;font-family:var(--mono);font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink)" placeholder="输入路径，默认从主目录开始">
+        <button class="mini" onclick="goPath()">前往</button>
+        <button class="mini" onclick="upPath()">⬆ 上级</button>
+        <button class="mini" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="scanHere()">🔍 扫描此文件夹</button>
+      </div>
+      <div id="bcrumb" style="padding:0 16px 4px;font-size:11.5px;color:var(--sub);font-family:var(--mono)"></div>
+      <div id="bdirs" style="max-height:190px;overflow:auto;padding:2px 16px 10px"></div>
+    </div>
+    <div id="gitbox" style="display:none;padding:12px 16px 6px">
+      <input id="giturl" style="width:100%;font-family:var(--mono);font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink)" placeholder="git 仓库地址：git@github.com:owner/repo.git 或 https://github.com/owner/repo.git">
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+        <input id="gitparent" style="flex:1;font-family:var(--mono);font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink)" placeholder="克隆到的父目录（点右侧 📂 选择）" readonly>
+        <button class="mini" style="background:var(--blue);color:#fff;border-color:var(--blue)" onclick="openDestPicker()">📂 选择文件夹</button>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <button class="b-pri" style="font-size:13px;padding:7px 22px" onclick="doClone()">⬇ 克隆</button>
+      </div>
+      <div class="hint" style="margin:6px 0 2px">git@ 走本机 SSH key；https 公开仓库免密。克隆完成后自动切到该目录并扫描，直接勾选添加即可。</div>
+      <div id="clonestat" style="max-height:110px;overflow:auto"></div>
+    </div>
+    <div id="bscan" style="flex:1;overflow:auto;padding:4px 16px 12px"></div>
+    <div class="mbar" style="justify-content:flex-end;gap:10px">
+      <span class="hint" id="bscan-hint" style="flex:1"></span>
+      <button class="b-pri" id="adoptBtn" disabled onclick="adopt()">添加选中（0）</button>
+    </div>
+  </div>
+</div>
+<div class="modal" id="destpicker">
+  <div class="mbox light" style="width:min(560px,94vw);height:min(480px,80vh)">
+    <div class="mbar">
+      <span>📂 选择「克隆到的父文件夹」——进入目标目录后点右下角确认</span>
+      <button class="x" onclick="closeDestPicker()">✕</button>
+    </div>
+    <div style="display:flex;gap:8px;padding:12px 16px 6px;align-items:center">
+      <input id="dppath" style="flex:1;font-family:var(--mono);font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink)" placeholder="/Users/…">
+      <button class="mini" onclick="dpGo()">前往</button>
+      <button class="mini" onclick="dpUp()">⬆ 上级</button>
+    </div>
+    <div id="dpcrumb" style="padding:0 16px 4px;font-size:11.5px;color:var(--sub);font-family:var(--mono)"></div>
+    <div id="dpdirs" style="flex:1;overflow:auto;padding:2px 16px 8px"></div>
+    <div class="mbar" style="justify-content:flex-end">
+      <span class="hint" id="dpcur" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+      <button class="b-pri" style="font-size:12.5px" onclick="confirmDest()">✅ 就克隆到这里</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+let STATE=null, ENV=null, selSc=null, curLogId=null, logTimer=null;
+
+const $=(s)=>document.querySelector(s);
+function toast(msg,ms=2600){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),ms)}
+
+async function api(path,body){
+  const r=await fetch(path, body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:undefined);
+  return r.json();
+}
+
+function stHtml(p){
+  if(p.installing) return `<span class="st busy"><span class="big"></span>装依赖中…</span>`;
+  if(p.status==='starting') return `<span class="st busy"><span class="big"></span>启动中…</span>`;
+  if(p.status==='running') return `<span class="st run"><span class="big"></span>运行中${p.pid&&p.pid.length?' · PID '+p.pid.join(','):''}</span>`;
+  if(p.status==='external') return `<span class="st ext"><span class="big"></span>端口 ${p.port} 有外部进程</span>`;
+  if(p.status==='stopped'&&p.port) return `<span class="st stop"><span class="big"></span>已停止 · 曾用 :${p.port}</span>`;
+  return `<span class="st stop"><span class="big"></span>已停止</span>`;
+}
+function visitBtn(p,url){
+  const live=p.status==='running'||p.status==='starting'||p.status==='external';
+  if(live&&url){
+    if(p.urlOk===false) return `<button class="b-ghost" style="color:var(--amber)" onclick="window.open('${url}','_blank')" title="端口有监听但请求无响应：可能仍在编译/路由未就绪，或该端口其实被其他项目占着。点日志看进度；链接仍可手动打开试试">🔗 访问 ⚠</button>`;
+    return `<button class="b-ghost" onclick="window.open('${url}','_blank')">🔗 访问</button>`;
+  }
+  if(live) return `<button class="b-ghost" disabled title="正在编译/启动，日志出现端口后这里自动变成可点的访问链接（每 3 秒自动刷新）">⏳ 地址识别中</button>`;
+  return `<button class="b-ghost" disabled title="未启动——点「▶ 启动」后，这里自动变成可点的访问链接（staging 域名地址见卡片上方）">🚫 启动后可访问</button>`;
+}
+
+function card(p){
+  const scenario=STATE.scenarios.find(s=>s.id===p.scenario);
+  let badges='';
+  if(p.port) badges+=`<span class="badge">:${p.port}</span>`;
+  if(p.url) badges+=`<span class="badge" title="${p.url}" style="max-width:100%">${p.url}</span>`;
+  if(scenario) badges+=`<span class="badge g">w2 场景：${scenario.name.split('（')[0]}</span>`;
+  if(scenario) badges+=`<span class="badge a">经 w2 代理 127.0.0.1:8899</span>`;
+  const running=p.status!=='stopped';
+  const url=p.url||(p.port?`http://localhost:${p.port}`:null);
+  return `<div class="card" data-id="${p.id}">
+    <div class="row1"><div class="name">${p.name}</div>${stHtml(p)}</div>
+    <div class="desc">${p.desc}</div>
+    ${badges?`<div class="badges">${badges}</div>`:''}
+    ${p.note?`<div class="note">${p.note}</div>`:''}
+    <div class="ops">
+      ${p.installNeed?`<button class="b-warn" onclick="act('install','${p.id}')">📦 先装依赖</button>`:''}
+      ${running
+        ?`<button class="b-danger" onclick="act('stop','${p.id}')">⏹ 停止</button>`
+        :`<button class="b-pri" onclick="act('start','${p.id}')">▶ 启动</button>`}
+      <button class="b-ghost" onclick="openLog('${p.id}')">📜 日志</button>
+      ${visitBtn(p,url)}
+      <button class="b-ghost" style="color:var(--red)" onclick="removeProj('${p.id}','${p.custom?0:1}')">✕ 移除</button>
+    </div>
+  </div>`;
+}
+
+let curTab='__all__';
+try{curTab=localStorage.getItem('launcher-tab')||'__all__'}catch(e){}
+
+function tabsHtml(groups){
+  const tabs=[['__all__','全部']].concat(groups.map(g=>[g,g.split('（')[0]]));
+  if(!tabs.some(t=>t[0]===curTab)) curTab='__all__';
+  return tabs.map(([id,name])=>{
+    const ps=id==='__all__'?STATE.projects:STATE.projects.filter(p=>p.group===id);
+    const run=ps.filter(p=>p.status!=='stopped').length;
+    return `<div class="tab ${id===curTab?'on':''}" onclick="pickTab('${esc(id)}')">${name} <span class="tot">${ps.length}</span>${run?`<span class="cnt show">${run}▲</span>`:''}</div>`;
+  }).join('');
+}
+function pickTab(id){curTab=id;try{localStorage.setItem('launcher-tab',id)}catch(e){};render()}
+
+function render(){
+  const hasCorp = !!(STATE.scenarios && STATE.scenarios.length);
+  $('#corplinks').style.display = hasCorp ? '' : 'none';
+  $('#corpguide').style.display = hasCorp ? '' : 'none';
+  document.querySelectorAll('.sc-wrap').forEach(el=>el.style.display = hasCorp ? '' : 'none');
+  if(!STATE.projects || !STATE.projects.length){
+    $('#tabs').innerHTML='';$('#removed').innerHTML='';
+    $('#groups').innerHTML=`<div class="card" style="grid-column:1/-1;text-align:center;padding:46px 20px;align-items:center">
+      <div style="font-size:40px">🚀</div>
+      <div style="font-weight:700;font-size:16px;margin:8px 0 4px">欢迎使用本地项目启动器</div>
+      <div class="desc">每个人的项目都不一样：选择你的项目文件夹，扫描后一键启动</div>
+      <button class="b-pri" style="margin-top:14px;padding:9px 28px;font-size:14px" onclick="openBrowse()">📁 选择文件夹添加项目</button>
+      <div class="hint" style="margin-top:10px">支持前端 / Node / monorepo 子应用 / Go 项目，自动识别启动命令、端口与依赖</div>
+    </div>`;
+    return;
+  }
+  const groups=[];
+  (STATE.projects||[]).forEach(p=>{if(!groups.includes(p.group))groups.push(p.group)});
+  if(!(curTab==='__all__'||groups.includes(curTab))) curTab='__all__';
+  $('#tabs').innerHTML=tabsHtml(groups);
+  const shown=curTab==='__all__'?STATE.projects:STATE.projects.filter(p=>p.group===curTab);
+  const head=curTab==='__all__'?'':'<div class="hint" style="font-weight:650;color:var(--ink);margin:14px 0 8px">'+curTab+'</div>';
+  $('#groups').innerHTML=head+`<div class="grid">${shown.map(card).join('')}</div>`;
+  $('#removed').innerHTML=(STATE.removed||[]).length
+    ?('<div class="hint" style="color:var(--sub)">已从启动器移除的内置项目（可恢复）：'+STATE.removed.map(r=>
+        `<button class="mini" style="margin-left:6px" onclick="restoreP('${esc(r.id)}')">↩ ${esc(r.name)}</button>`).join('')+'</div>')
+    :'';
+
+  $('#scenarios').innerHTML=(STATE.scenarios||[]).map(s=>`
+    <div class="sc ${s.id===STATE.lastScenario?'cur':''} ${s.id===selSc?'sel':''}" onclick="pickSc('${s.id}')">
+      <span class="tag">● 当前</span>
+      <div class="t">${s.name}</div><div class="d">${s.desc}</div>
+    </div>`).join('');
+  $('#sc-last').textContent=STATE.lastScenario?('最近应用：'+STATE.scenarios.find(s=>s.id===STATE.lastScenario)?.name):'尚未通过本面板应用过场景（可在 w2 面板确认当前规则）';
+}
+
+function renderEnv(){
+  const e=ENV||{};
+  const b=(on,txt)=>`<b class="dot ${on?'on':'off'}"></b>`;
+  $('#envbar').innerHTML=`
+    <span class="env">${b(1)} node ${e.node||'—'}</span>
+    <span class="env">${b(e.pnpm)} pnpm</span>
+    <span class="env">${b(e.yarn)} yarn</span>
+    <span class="env">${b(e.led)} led</span>
+    <span class="env"><b class="dot ${e.w2Running?'on':'warn'}"></b> w2 ${e.w2Running?'运行中 (8899)':'未运行'}</span>
+    ${e.w2
+      ?`<button class="mini" onclick="w2Act('${e.w2Running?'stop':'start'}')">${e.w2Running?'停止 w2':'启动 w2'}</button>
+        <button class="mini" onclick="w2Act('restart')">重启 w2</button>`
+      :`<span class="env" style="color:var(--red)">未安装 w2：npm i -g w2</span>`}
+  `;
+}
+
+async function refreshState(){try{STATE=await api('/api/state');render()}catch{}}
+async function refreshEnv(){try{ENV=await api('/api/env');renderEnv()}catch{}}
+
+async function act(kind,id){
+  if(kind==='stop'&&!confirm('停止 '+id+' ？（vite / led 等相关进程会被终止）'))return;
+  const d=await api('/api/'+kind,{id});
+  if(d.error){toast('❌ '+(d.error),4200)}else{
+    if(kind==='start'){
+      const target=[...document.querySelectorAll('.card')].find(c=>c.dataset.id===id);
+      const noUrl=target&&!target.querySelector('[onclick^="window.open"]');
+      const sc=d.scenario?(d.scenarioOk?' ｜ 已自动切换 w2 场景：'+d.scenario:' ｜ w2 场景切换失败，见场景区'):'';
+      toast('🚀 启动命令已发出'+(noUrl?'——地址识别中：跑起来后「🔗 访问」按钮自动点亮（老项目编译可能 1-3 分钟）':'，看状态灯与日志确认就绪')+sc,4800);
+    }
+    else if(kind==='stop')toast('已发送停止信号',2000);
+    else if(kind==='install')toast('依赖安装已在后台执行，进度看日志',3000);
+  }
+  refreshState();
+}
+
+async function w2Act(a){const d=await api('/api/w2',{action:a});toast('w2 '+(a)+'：'+(d.out||'ok'));setTimeout(refreshEnv,1500);refreshEnv()}
+
+async function pickSc(id){selSc=id;render()}
+$('#sc-apply').onclick=async()=>{
+  if(!selSc){toast('先在上面选一个场景');return}
+  const d=await api('/api/scenario',{id:selSc});
+  toast(d.ok?'✅ 场景已应用（w2 add --force）：'+selSc:'❌ '+(d.error||d.out),4000);
+  refreshState();setTimeout(refreshEnv,800);
+};
+
+function openLog(id){curLogId=id;$('#logtitle').textContent='日志 · '+id+'（/tmp/dev-launcher/logs/'+id+'.log）';$('#logmodal').classList.add('show');pullLog();
+  clearInterval(logTimer);logTimer=setInterval(()=>{if($('#log-auto').dataset.on!=='0')pullLog()},2500);}
+function pullLog(){api('/api/logs?id='+curLogId).then(d=>{$('#logview').textContent=d.text||'(空)';const v=$('#logview');v.scrollTop=v.scrollHeight})}
+function closeLog(){$('#logmodal').classList.remove('show');curLogId=null;clearInterval(logTimer)}
+$('#log-auto').dataset.on='1';
+$('#log-auto').onclick=()=>{const b=$('#log-auto');b.dataset.on=b.dataset.on==='1'?'0':'1';b.textContent=b.dataset.on==='1'?'⏸ 暂停滚动':'▶ 继续滚动'};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLog();closeBrowse();closeDestPicker()}});
+
+// ---------------- 克隆目标文件夹选择器 ----------------
+let dpCur='';
+async function openDestPicker(){
+  $('#destpicker').classList.add('show');
+  dpCur = localStorage.getItem('launcher-clone-parent') || bCur || '';
+  if(!dpCur){ const d=await api('/api/browse'); dpCur=d.path||''; }
+  await dpLoad(dpCur);
+}
+function closeDestPicker(){$('#destpicker').classList.remove('show')}
+async function dpLoad(dir){
+  const d=await api('/api/browse'+(dir?('?path='+encodeURIComponent(dir)):''));
+  if(d.error){toast('❌ '+d.error);return}
+  dpCur=d.path; $('#dppath').value=dpCur;
+  window._dpparent=d.parent;
+  $('#dpcur').textContent='当前：'+dpCur;
+  $('#dpdirs').innerHTML=(d.dirs||[]).map(x=>
+    `<div class="ditem" onclick="dpLoad('${esc(x.path)}')">📁 ${x.name}</div>`
+  ).join('')||'<div class="hint" style="padding:6px 0">（此目录下没有子文件夹，可直接确认用当前目录）</div>';
+}
+function dpGo(){dpLoad($('#dppath').value.trim())}
+function dpUp(){if(window._dpparent)dpLoad(window._dpparent)}
+function confirmDest(){
+  if(!dpCur){toast('先选一个文件夹');return}
+  $('#gitparent').value=dpCur;
+  try{localStorage.setItem('launcher-clone-parent',dpCur)}catch(e){}
+  closeDestPicker(); toast('已选定：'+dpCur+'（仓库将克隆到该目录下）',2800);
+}
+
+// ---------------- git 克隆 ----------------
+let bMode='local', cloneWatch=null, processedClones=new Set();
+function bmode(m){
+  bMode=m;
+  $('#localbox').style.display = m==='local'?'':'none';
+  $('#gitbox').style.display = m==='git'?'':'none';
+  $('#tab-local').style.cssText = m==='local'?'background:var(--blue);color:#fff;border-color:var(--blue)':'';
+  $('#tab-git').style.cssText = m==='git'?'background:var(--blue);color:#fff;border-color:var(--blue)':'';
+  if(m==='git' && !$('#gitparent').value) $('#gitparent').value = bCur || '';
+  clearInterval(cloneWatch);
+  if(m==='git'){ pollClones(); cloneWatch=setInterval(pollClones,2500); }
+}
+async function doClone(){
+  const url=$('#giturl').value.trim();
+  if(!url){toast('先填 git 仓库地址');return}
+  const parent=$('#gitparent').value.trim();
+  if(!parent){toast('先点 📂 选择克隆到的父文件夹');return}
+  const r=await api('/api/clone',{url,parent});
+  if(r.error){toast('❌ '+r.error+(r.existing?('（可直接到本地文件夹里扫描该目录）'):''),4200);return}
+  toast('⬇ 克隆已开始：'+r.dest+'（进度见下方状态）',3600);
+  pollClones(); if(!cloneWatch) cloneWatch=setInterval(pollClones,2500);
+}
+async function pollClones(){
+  const d=await api('/api/clone/status'); if(d.error) return;
+  $('#clonestat').innerHTML=(d.clones||[]).map(c=>{
+    const t=c.running
+      ?`<span class="st busy"><span class="big"></span>克隆中 ${c.ageSec}s ｜ ${c.url}</span>`
+      :(c.code===0
+        ?`<span style="color:var(--green)">✅ 完成 ｜ ${c.dest}</span>`
+        :`<span style="color:var(--red)">❌ 失败(${c.code}) ｜ ${c.url}</span> <button class="mini" onclick="openLog('${esc(c.id)}')">看日志</button>`);
+    return `<div class="ditem" style="cursor:default">${t}</div>`;
+  }).join('')||'<div class="hint" style="padding:4px 0">（暂无克隆任务）</div>';
+  for(const c of d.clones||[]){
+    if(!c.running && !processedClones.has(c.id)){
+      processedClones.add(c.id);
+      if(c.code===0){
+        toast('✅ 克隆完成，自动扫描中…',3000);
+        bmode('local'); await loadBrowse(c.dest); scanHere();
+      } else toast('❌ 克隆失败（退出码 '+c.code+'），点「看日志」排查',4500);
+    }
+  }
+}
+
+// ---------------- 文件夹浏览与扫描添加 ----------------
+let bCur='', bCandidates=[], bExisting=[], scanSel=new Set();
+function esc(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}
+async function openBrowse(){$('#browsemodal').classList.add('show');await loadBrowse(bCur)}
+function closeBrowse(){$('#browsemodal').classList.remove('show');clearInterval(cloneWatch);cloneWatch=null}
+async function loadBrowse(dir){
+  const d=await api('/api/browse'+(dir?('?path='+encodeURIComponent(dir)):''));
+  if(d.error){toast('❌ '+d.error);return}
+  bCur=d.path;$('#bpath').value=bCur;
+  bCandidates=[];bExisting=[];scanSel.clear();adoptBtnSync();
+  $('#bscan').innerHTML='';$('#bscan-hint').textContent='点击下方文件夹进入，或直接「扫描此文件夹」';
+  $('#bcrumb').textContent='当前位置：'+bCur+(d.parent?('  ｜  上级：'+d.parent):'');
+  window._bparent=d.parent;
+  $('#bdirs').innerHTML=(d.dirs||[]).map(x=>
+    `<div class="ditem ${x.isProject?'proj':''}" onclick="loadBrowse('${esc(x.path)}')">${x.isProject?'📦':'📁'} ${x.name}${x.isProject?' · 项目':''}</div>`
+  ).join('')||'<div class="hint" style="padding:6px 0">（此目录下没有子文件夹）</div>';
+}
+function goPath(){loadBrowse($('#bpath').value.trim())}
+function upPath(){if(window._bparent)loadBrowse(window._bparent)}
+async function scanHere(){
+  const d=await api('/api/scan?path='+encodeURIComponent(bCur));
+  if(d.error){toast('❌ '+d.error);return}
+  bCandidates=d.candidates||[];bExisting=d.existing||[];scanSel.clear();adoptBtnSync();
+  $('#bscan-hint').textContent=(bCandidates.length?('发现 '+bCandidates.length+' 个可启动的新项目'):'未发现新项目')+(bExisting.length?(' ｜ 该文件夹下已有 '+bExisting.length+' 个在面板中（已折叠）'):'')+'（root/apps/packages 及三层内已扫过）';
+  $('#bscan').innerHTML=
+    (bCandidates.map(c=>
+      `<label class="sitem" id="si-${c.id}">
+        <input type="checkbox" onchange="toggleSel('${esc(c.dir)}',this)" style="margin-right:8px">
+        <span class="t">${c.name}</span>
+        <span class="d">${c.dir}<br>${c.desc}</span>
+      </label>`).join('')||'<div class="hint" style="padding:4px 0">（没有新项目可添加）</div>')
+    +(bExisting.length?`
+      <details class="fold">
+        <summary>✅ 已收录 ${bExisting.length} 个（此文件夹下已在面板中，点开查看）</summary>
+        <div>${bExisting.map(c=>`<div class="exitem">✓ ${c.name}<span class="d">${c.dir}</span></div>`).join('')}</div>
+      </details>`:'');
+}
+function toggleSel(dir,el){
+  el.checked?scanSel.add(dir):scanSel.delete(dir);
+  el.closest('.sitem').classList.toggle('on',el.checked);
+  adoptBtnSync();
+}
+function adoptBtnSync(){const b=$('#adoptBtn');b.disabled=!scanSel.size;b.textContent='添加选中（'+scanSel.size+'）'}
+async function adopt(){
+  const picks=bCandidates.filter(c=>scanSel.has(c.dir));
+  if(!picks.length)return;
+  const r=await api('/api/adopt',{projects:picks});
+  toast(r.added?('✅ 已添加 '+r.added+' 个项目，可在面板分组「📁 …（文件夹添加）」中一键启动'):'没有新增（可能已存在）',3600);
+  closeBrowse();refreshState();
+}
+async function removeProj(id,builtin){
+  const msg=builtin==='1'||builtin===1?'从启动器移除「'+id+'」？（运行中会先停止；内置项目移除后可在下方恢复）'
+                                 :'从启动器移除「'+id+'」？（运行中会先停止；自定义项目移除后需重新扫描添加）';
+  if(!confirm(msg))return;
+  await api('/api/custom/delete',{id});refreshState();
+}
+async function restoreP(id){
+  await api('/api/custom/restore',{id});toast('已恢复 '+id,2000);refreshState();
+}
+
+refreshState();refreshEnv();
+setInterval(refreshState,3000);
+setInterval(refreshEnv,15000);
+</script>
+</body>
+</html>

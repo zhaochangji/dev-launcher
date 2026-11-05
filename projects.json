@@ -1,0 +1,68 @@
+{
+  "_comment": "分发配置：本文件只承载「团队共享内容」（w2 代理场景）。项目列表是每人自己的，存放于 ~/.dev-launcher/projects.local.json（面板「➕ 选择文件夹添加项目」自动维护）。给团队补场景：编辑 scenarios；whistleGroup 保持与团队现有规则集名称一致（同名规则集覆盖实现互斥）。",
+  "whistleGroup": "open-platform-fe",
+  "autoApplyScenario": true,
+  "scenarios": [
+    {
+      "id": "interactive",
+      "name": "互动内容平台（interactive :8088）",
+      "desc": "open-platform.staging 前端资源走本地 8088，后端直连 staging",
+      "rules": [
+        "127.0.0.1:8088 open-platform.staging.kuaishou.com excludeFilter://*/platform excludeFilter://*/rest excludeFilter://*/accessproxy_statics excludeFilter://*/account",
+        "^open-platform.staging.kuaishou.com/src***/assets*** localhost:8088/src$1/assets$2"
+      ]
+    },
+    {
+      "id": "open-micro",
+      "name": "微应用开发 - open 域名（子应用 :5173 + 主应用 :8082）",
+      "desc": "乾坤联调：open-micro.staging → 本地 5173，open-platform.staging → 本地 8082",
+      "rules": [
+        "host://localhost:5173 open-micro.staging.kuaishou.com",
+        "127.0.0.1:8082 open-platform.staging.kuaishou.com excludeFilter://*/platform excludeFilter://*/rest excludeFilter://*/accessproxy_statics excludeFilter://*/account",
+        "^open-platform.staging.kuaishou.com/src***/assets*** localhost:5173/src$1/assets$2"
+      ]
+    },
+    {
+      "id": "open-standalone",
+      "name": "open 子应用独立开发（open-platform-fe :5173）",
+      "desc": "仅子应用：open-platform.staging → 本地 5173",
+      "rules": [
+        "127.0.0.1:5173 open-platform.staging.kuaishou.com excludeFilter://*/platform excludeFilter://*/rest excludeFilter://*/accessproxy_statics excludeFilter://*/account"
+      ]
+    },
+    {
+      "id": "platform-only",
+      "name": "只调主应用容器（platform-frontend :8082）",
+      "desc": "open-platform.staging → 本地 8082（不需要子应用）",
+      "rules": [
+        "127.0.0.1:8082 open-platform.staging.kuaishou.com excludeFilter://*/platform excludeFilter://*/accessproxy_statics excludeFilter://*/account"
+      ]
+    },
+    {
+      "id": "general-open",
+      "name": "general-project open-platform（:8080）",
+      "desc": "open-platform.staging → 本地 8080（老仓库 general-project）",
+      "rules": [
+        "host://127.0.0.1:8080 open-platform.staging.kuaishou.com excludeFilter://*/accessproxy_statics excludeFilter://*/account excludeFilter://*/portal"
+      ]
+    },
+    {
+      "id": "ks-mp-saas",
+      "name": "三方服务商平台（ks-mp-saas :8082）",
+      "desc": "ks-mp-saas.staging → 本地 8082",
+      "rules": [
+        "127.0.0.1:8082 ks-mp-saas.staging.kuaishou.com excludeFilter://*/oauth/web"
+      ]
+    },
+    {
+      "id": "mp-domain",
+      "name": "微应用 - mp 域名（主应用 :8082 + 子应用 :5173）",
+      "desc": "mp-portal.staging → 本地 8082，静态资源走本地 5173",
+      "rules": [
+        "127.0.0.1:8082 mp-portal.staging.kuaishou.com",
+        "^mp-portal.staging.kuaishou.com/src***/assets*** localhost:5173/src$1/assets$2"
+      ]
+    }
+  ],
+  "projects": []
+}
